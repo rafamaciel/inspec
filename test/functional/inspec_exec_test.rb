@@ -12,11 +12,15 @@ describe "inspec exec" do
   end
 
   def stdout
-    @stdout ||= out.stdout.force_encoding(Encoding::UTF_8)
+    @stdout ||= out.stdout
+      .force_encoding(Encoding::UTF_8)
+      .gsub(/\e\[(\d+)(;\d+)*m/, "") # strip ANSI color codes
   end
 
   def stderr
-    @stderr ||= out.stderr.force_encoding(Encoding::UTF_8)
+    @stderr ||= out.stderr
+      .force_encoding(Encoding::UTF_8)
+      .gsub(/\e\[(\d+)(;\d+)*m/, "") # strip ANSI color codes
   end
 
   before do
@@ -35,19 +39,19 @@ describe "inspec exec" do
   it "can execute the profile" do
     inspec("exec " + example_profile + " --no-create-lockfile")
 
-    stdout.must_include "\e[38;5;41m  ✔  tmp-1.0: Create /tmp directory\e[0m\n"
+    stdout.must_include "  ✔  tmp-1.0: Create /tmp directory\n"
     stdout.must_include "
-\e[38;5;247m  ↺  gordon-1.0: Verify the version number of Gordon (1 skipped)\e[0m
-\e[38;5;247m     ↺  Can't find file `/tmp/gordon/config.yaml`\e[0m
+  ↺  gordon-1.0: Verify the version number of Gordon (1 skipped)
+     ↺  Can't find file `/tmp/gordon/config.yaml`
 "
     if is_windows?
-      stdout.must_include "\e[38;5;247m  ↺  ssh-1: Allow only SSH Protocol 2\e[0m\n"
-      stdout.must_include "\nProfile Summary: \e[38;5;41m1 successful control\e[0m, 0 control failures, \e[38;5;247m2 controls skipped\e[0m\n"
-      stdout.must_include "\nTest Summary: \e[38;5;41m3 successful\e[0m, 0 failures, \e[38;5;247m2 skipped\e[0m\n"
+      stdout.must_include "  ↺  ssh-1: Allow only SSH Protocol 2\n"
+      stdout.must_include "\nProfile Summary: 1 successful control, 0 control failures, 2 controls skipped\n"
+      stdout.must_include "\nTest Summary: 3 successful, 0 failures, 2 skipped\n"
     else
-      stdout.must_include "\e[38;5;41m  ✔  ssh-1: Allow only SSH Protocol 2\e[0m\n"
-      stdout.must_include "\nProfile Summary: \e[38;5;41m2 successful controls\e[0m, 0 control failures, \e[38;5;247m1 control skipped\e[0m\n"
-      stdout.must_include "\nTest Summary: \e[38;5;41m4 successful\e[0m, 0 failures, \e[38;5;247m1 skipped\e[0m\n"
+      stdout.must_include "  ✔  ssh-1: Allow only SSH Protocol 2\n"
+      stdout.must_include "\nProfile Summary: 2 successful controls, 0 control failures, 1 control skipped\n"
+      stdout.must_include "\nTest Summary: 4 successful, 0 failures, 1 skipped\n"
     end
 
     stderr.must_equal ""
@@ -145,7 +149,7 @@ Test Summary: 0 successful, 0 failures, 0 skipped
   it "executes a profile and reads inputs" do
     inspec("exec #{File.join(examples_path, "profile-attribute")} --no-create-lockfile --input-file #{File.join(examples_path, "profile-attribute.yml")}")
 
-    stdout.must_include "Test Summary: \e[38;5;41m2 successful\e[0m, 0 failures, 0 skipped"
+    stdout.must_include "Test Summary: 2 successful, 0 failures, 0 skipped"
 
     stderr.must_equal ""
 
@@ -162,7 +166,7 @@ Test Summary: 0 successful, 0 failures, 0 skipped
     stdout.must_include "↺  This will be skipped intentionally"
     stdout.must_include "failing"
     stdout.must_include "×  should eq \"as intended\""
-    stdout.must_include "Test Summary: \e[38;5;41m1 successful\e[0m, \e[38;5;9m1 failure\e[0m, \e[38;5;247m1 skipped\e[0m\n"
+    stdout.must_include "Test Summary: 1 successful, 1 failure, 1 skipped\n"
 
     stderr.must_equal ""
 
@@ -172,7 +176,7 @@ Test Summary: 0 successful, 0 failures, 0 skipped
   it "executes only specified controls when selecting passing controls by literal names" do
     inspec("exec " + File.join(profile_path, "filter_table") + " --no-create-lockfile --controls 2943_pass_undeclared_field_in_hash 2943_pass_irregular_row_key")
 
-    stdout.must_include "\nProfile Summary: \e[38;5;41m2 successful controls\e[0m, 0 control failures, 0 controls skipped\n"
+    stdout.must_include "\nProfile Summary: 2 successful controls, 0 control failures, 0 controls skipped\n"
 
     stderr.must_equal ""
 
@@ -182,7 +186,7 @@ Test Summary: 0 successful, 0 failures, 0 skipped
   it "executes only specified controls when selecting failing controls by literal names" do
     inspec("exec " + File.join(profile_path, "filter_table") + " --no-create-lockfile --controls 2943_fail_derail_check")
 
-    stdout.must_include "\nProfile Summary: 0 successful controls, \e[38;5;9m1 control failure\e[0m, 0 controls skipped"
+    stdout.must_include "\nProfile Summary: 0 successful controls, 1 control failure, 0 controls skipped"
 
     stderr.must_equal ""
 
@@ -192,7 +196,7 @@ Test Summary: 0 successful, 0 failures, 0 skipped
   it "executes only specified controls when selecting passing controls by regex" do
     inspec("exec " + File.join(profile_path, "filter_table") + " --no-create-lockfile --controls '/^2943_pass/'")
 
-    stdout.must_include "Profile Summary: \e[38;5;41m6 successful controls\e[0m, 0 control failures, 0 controls skipped"
+    stdout.must_include "Profile Summary: 6 successful controls, 0 control failures, 0 controls skipped"
 
     assert_exit_code 0, out
   end
@@ -200,7 +204,7 @@ Test Summary: 0 successful, 0 failures, 0 skipped
   it "executes only specified controls when selecting failing controls by regex" do
     inspec("exec " + File.join(profile_path, "filter_table") + " --no-create-lockfile --controls '/^2943_fail/'")
 
-    stdout.must_include "Profile Summary: 0 successful controls, \e[38;5;9m1 control failure\e[0m, 0 controls skipped"
+    stdout.must_include "Profile Summary: 0 successful controls, 1 control failure, 0 controls skipped"
 
     stderr.must_equal ""
 
@@ -210,8 +214,8 @@ Test Summary: 0 successful, 0 failures, 0 skipped
   it "can execute a simple file with the default formatter" do
     inspec("exec " + example_control + " --no-create-lockfile")
 
-    stdout.must_include "\nProfile Summary: \e[38;5;41m1 successful control\e[0m, 0 control failures, 0 controls skipped\n"
-    stdout.must_include "\nTest Summary: \e[38;5;41m2 successful\e[0m, 0 failures, 0 skipped\n"
+    stdout.must_include "\nProfile Summary: 1 successful control, 0 control failures, 0 controls skipped\n"
+    stdout.must_include "\nTest Summary: 2 successful, 0 failures, 0 skipped\n"
 
     stderr.must_equal ""
 
@@ -224,11 +228,11 @@ Test Summary: 0 successful, 0 failures, 0 skipped
       inspec_with_env(command, INSPEC_CONFIG_DIR: tmpdir)
 
       if is_windows?
-        stdout.must_include "Profile Summary: 0 successful controls, 0 control failures, \e[38;5;247m2 controls skipped\e[0m\n"
-        stdout.must_include "Test Summary: \e[38;5;41m2 successful\e[0m, \e[38;5;9m1 failure\e[0m, \e[38;5;247m3 skipped\e[0m\n"
+        stdout.must_include "Profile Summary: 0 successful controls, 0 control failures, 2 controls skipped\n"
+        stdout.must_include "Test Summary: 2 successful, 1 failure, 3 skipped\n"
       else
-        stdout.must_include "Profile Summary: \e[38;5;41m1 successful control\e[0m, 0 control failures, \e[38;5;247m1 control skipped\e[0m\n"
-        stdout.must_include "Test Summary: \e[38;5;41m3 successful\e[0m, \e[38;5;9m1 failure\e[0m, \e[38;5;247m2 skipped\e[0m\n"
+        stdout.must_include "Profile Summary: 1 successful control, 0 control failures, 1 control skipped\n"
+        stdout.must_include "Test Summary: 3 successful, 1 failure, 2 skipped\n"
       end
       out.exit_status.must_equal 100
       cache_dir = File.join(tmpdir, "cache")
@@ -259,9 +263,9 @@ Test Summary: 0 successful, 0 failures, 0 skipped
     let(:json) { JSON.load(stdout) }
 
     it "exits with an error" do
-      stdout.must_include "skippy\e[0m\n\e[38;5;247m     ↺  This will be skipped super intentionally.\e[0m\n"
-      stdout.must_include "  ↺  CONTROL database: MySQL Session\e[0m\n\e[38;5;247m     ↺  Can't run MySQL SQL checks without authentication\e[0m\n"
-      stdout.must_include "Profile Summary: 0 successful controls, 0 control failures, \e[38;5;247m2 controls skipped\e[0m\nTest Summary: 0 successful, 0 failures, \e[38;5;247m2 skipped\e[0m\n"
+      stdout.must_include "skippy\n     ↺  This will be skipped super intentionally.\n"
+      stdout.must_include "  ↺  CONTROL database: MySQL Session\n     ↺  Can't run MySQL SQL checks without authentication\n"
+      stdout.must_include "Profile Summary: 0 successful controls, 0 control failures, 2 controls skipped\nTest Summary: 0 successful, 0 failures, 2 skipped\n"
 
       stderr.must_equal ""
 
@@ -273,7 +277,7 @@ Test Summary: 0 successful, 0 failures, 0 skipped
     let(:out) { inspec("exec " + File.join(profile_path, "skippy-controls") + " --no-distinct-exit --no-create-lockfile") }
 
     it "exits with code 0 and skipped tests in output" do
-      stdout.must_include "Profile Summary: 0 successful controls, 0 control failures, \e[38;5;247m2 controls skipped\e[0m\nTest Summary: 0 successful, 0 failures, \e[38;5;247m2 skipped\e[0m\n"
+      stdout.must_include "Profile Summary: 0 successful controls, 0 control failures, 2 controls skipped\nTest Summary: 0 successful, 0 failures, 2 skipped\n"
 
       stderr.must_equal ""
 
@@ -285,7 +289,7 @@ Test Summary: 0 successful, 0 failures, 0 skipped
     let(:out) { inspec("exec " + File.join(profile_path, "failures") + " --no-distinct-exit --no-create-lockfile") }
 
     it "exits with code 1" do
-      stdout.must_include "Profile Summary: 0 successful controls, \e[38;5;9m2 control failures\e[0m, 0 controls skipped"
+      stdout.must_include "Profile Summary: 0 successful controls, 2 control failures, 0 controls skipped"
 
       stderr.must_equal ""
 
@@ -346,14 +350,14 @@ Test Summary: 0 successful, 0 failures, 0 skipped
 Version: (not specified)
 Target:  local://
 
-\e[38;5;41m  \xE2\x9C\x94  tmp-1.0: Create /tmp directory\e[0m
-\e[38;5;41m     \xE2\x9C\x94  File /tmp should be directory\e[0m
+  \xE2\x9C\x94  tmp-1.0: Create /tmp directory
+     \xE2\x9C\x94  File /tmp should be directory
 
   File /tmp
-\e[38;5;41m     \xE2\x9C\x94  should be directory\e[0m
+     \xE2\x9C\x94  should be directory
 
-Profile Summary: \e[38;5;41m1 successful control\e[0m, 0 control failures, 0 controls skipped
-Test Summary: \e[38;5;41m2 successful\e[0m, 0 failures, 0 skipped\n"
+Profile Summary: 1 successful control, 0 control failures, 0 controls skipped
+Test Summary: 2 successful, 0 failures, 0 skipped\n"
     end
   end
 
@@ -370,10 +374,10 @@ Test Summary: \e[38;5;41m2 successful\e[0m, 0 failures, 0 skipped\n"
 
     it "should print all the results" do
       skip_windows!
-      stdout.must_include "×  tmp-1.0: Create /tmp directory (1 failed)\e[0m"
+      stdout.must_include "×  tmp-1.0: Create /tmp directory (1 failed)"
       stdout.must_include "×  should not be directory\n"
       stdout.must_include "×  undefined method `should_nota'"
-      stdout.must_include "×  should not be directory\n     expected `File /tmp.directory?` to return false, got true\e[0m"
+      stdout.must_include "×  should not be directory\n     expected `File /tmp.directory?` to return false, got true"
       stdout.must_include "×  7 should cmp >= 9\n"
       stdout.must_include "×  7 should not cmp == /^\\d$/\n"
       stdout.must_include "✔  7 should cmp == \"7\""
@@ -390,10 +394,10 @@ Test Summary: \e[38;5;41m2 successful\e[0m, 0 failures, 0 skipped\n"
 
     it "should print all the results" do
       skip_windows!
-      stdout.must_include "×  tmp-1.0: Create /tmp directory (1 failed)\e[0m"
+      stdout.must_include "×  tmp-1.0: Create /tmp directory (1 failed)"
       stdout.must_include "×  cmp-1.0: Using the cmp matcher for numbers (2 failed)"
       stdout.must_include "×  undefined method `should_nota'"
-      stdout.must_include "×  should not be directory\n     expected `File /tmp.directory?` to return false, got true\e[0m"
+      stdout.must_include "×  should not be directory\n     expected `File /tmp.directory?` to return false, got true"
       stdout.must_include "✔  profiled-1: Create /tmp directory (profile d)"
     end
   end
@@ -403,7 +407,7 @@ Test Summary: \e[38;5;41m2 successful\e[0m, 0 failures, 0 skipped\n"
 
     it "should print the profile information and then the test results" do
       skip_windows!
-      stdout.must_include "\e[38;5;9m  ×  tmp-1.0: Create /tmp directory (1 failed)\e[0m\n\e[38;5;41m     ✔  File /tmp should be directory\e[0m\n\e[38;5;9m     ×  File /tmp should not be directory\n"
+      stdout.must_include "  ×  tmp-1.0: Create /tmp directory (1 failed)\n     ✔  File /tmp should be directory\n     ×  File /tmp should not be directory\n"
     end
   end
 
@@ -411,7 +415,7 @@ Test Summary: \e[38;5;41m2 successful\e[0m, 0 failures, 0 skipped\n"
     it "works" do
       inspec("exec " + File.join(profile_path, "dependencies", "resource-namespace") + " --no-create-lockfile")
 
-      stdout.must_include "Profile Summary: \e[38;5;41m1 successful control\e[0m, 0 control failures, 0 controls skipped\n"
+      stdout.must_include "Profile Summary: 1 successful control, 0 control failures, 0 controls skipped\n"
 
       stderr.must_equal ""
 
@@ -423,7 +427,7 @@ Test Summary: \e[38;5;41m2 successful\e[0m, 0 failures, 0 skipped\n"
     it "does not run rules you did not include" do
       inspec("exec " + File.join(profile_path, "dependencies", "require_controls_test") + " --no-create-lockfile")
 
-      stdout.must_include "Profile Summary: \e[38;5;41m1 successful control\e[0m, 0 control failures, 0 controls skipped\n"
+      stdout.must_include "Profile Summary: 1 successful control, 0 control failures, 0 controls skipped\n"
 
       stderr.must_equal ""
 
@@ -435,7 +439,7 @@ Test Summary: \e[38;5;41m2 successful\e[0m, 0 failures, 0 skipped\n"
     it "correctly runs tests from the whole tree" do
       inspec("exec " + File.join(profile_path, "dependencies", "inheritance") + " --no-create-lockfile")
 
-      stdout.must_include "Profile Summary: \e[38;5;41m6 successful controls\e[0m, 0 control failures, 0 controls skipped\n"
+      stdout.must_include "Profile Summary: 6 successful controls, 0 control failures, 0 controls skipped\n"
 
       stderr.must_equal ""
 
@@ -448,9 +452,9 @@ Test Summary: \e[38;5;41m2 successful\e[0m, 0 failures, 0 skipped\n"
       inspec("exec supermarket://nathenharvey/tmp-compliance-profile --no-create-lockfile")
 
       if is_windows?
-        stdout.must_include "Profile Summary: \e[38;5;41m1 successful control\e[0m, \e[38;5;9m1 control failure\e[0m, 0 controls skipped\n"
+        stdout.must_include "Profile Summary: 1 successful control, 1 control failure, 0 controls skipped\n"
       else
-        stdout.must_include "Profile Summary: \e[38;5;41m2 successful controls\e[0m, 0 control failures, 0 controls skipped\n"
+        stdout.must_include "Profile Summary: 2 successful controls, 0 control failures, 0 controls skipped\n"
       end
 
       stderr.must_equal ""
@@ -462,9 +466,9 @@ Test Summary: \e[38;5;41m2 successful\e[0m, 0 failures, 0 skipped\n"
     it "can run supermarket profiles from inspec.yml" do
       inspec("exec #{File.join(profile_path, "supermarket-dep")} --no-create-lockfile")
       if is_windows?
-        stdout.must_include "Profile Summary: \e[38;5;41m1 successful control\e[0m, \e[38;5;9m1 control failure\e[0m, 0 controls skipped\n"
+        stdout.must_include "Profile Summary: 1 successful control, 1 control failure, 0 controls skipped\n"
       else
-        stdout.must_include "Profile Summary: \e[38;5;41m2 successful controls\e[0m, 0 control failures, 0 controls skipped\n"
+        stdout.must_include "Profile Summary: 2 successful controls, 0 control failures, 0 controls skipped\n"
       end
 
       stderr.must_equal ""
@@ -560,7 +564,7 @@ Test Summary: \e[38;5;41m2 successful\e[0m, 0 failures, 0 skipped\n"
       stdout.must_include 'got: "bob"'
       stdout.must_include '×  should eq "secret"'
       stdout.must_include "*** sensitive output suppressed ***"
-      stdout.must_include "\nTest Summary: \e[38;5;41m2 successful\e[0m, \e[38;5;9m2 failures\e[0m, 0 skipped\n"
+      stdout.must_include "\nTest Summary: 2 successful, 2 failures, 0 skipped\n"
 
       stderr.must_equal ""
 
