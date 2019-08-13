@@ -9,7 +9,8 @@ describe "inspec shell tests" do
       command = "shell -c '#{code.tr("'", '\\\'')}'#{json_suffix}"
       out = inspec(command)
 
-      out.stderr.must_equal stderr
+      actual = out.stderr.gsub(/\e\[(\d+)(;\d+)*m/, "") # strip ANSI color codes
+      actual.must_equal stderr
 
       assert_exit_code exit_status, out
 
@@ -159,9 +160,19 @@ describe "inspec shell tests" do
   unless FunctionalHelper.is_windows?
 
     describe "shell" do
+      attr_accessor :out
+
+      def stdout
+        out.stdout.gsub(/\e\[(\d+)(;\d+)*m/, "") # strip ANSI color codes
+      end
+
+      def stderr
+        out.stderr.gsub(/\e\[(\d+)(;\d+)*m/, "") # strip ANSI color codes
+      end
+
       def do_shell(code, exit_status = 0, stderr = "")
         cmd = "echo '#{code.tr("'", '\\\'')}' | #{exec_inspec} shell"
-        out = CMD.run_command(cmd)
+        self.out = CMD.run_command(cmd)
 
         assert_exit_code exit_status, out
 
@@ -178,91 +189,91 @@ describe "inspec shell tests" do
       end
 
       it "displays the target device information for the user without requiring the help command" do
-        out = do_shell("1+1")
-        out.stdout.must_include "You are currently running on:"
+        do_shell("1+1")
+        stdout.must_include "You are currently running on:"
       end
 
       it "provides a help command" do
-        out = do_shell("help")
-        out.stdout.must_include "Available commands:"
-        out.stdout.must_include "You are currently running on:"
+        do_shell("help")
+        stdout.must_include "Available commands:"
+        stdout.must_include "You are currently running on:"
       end
 
       it "provides resource help" do
-        out = do_shell("help file")
-        out.stdout.must_include "Use the file InSpec audit resource"
+        do_shell("help file")
+        stdout.must_include "Use the file InSpec audit resource"
       end
 
       it "provides helpful feedback if an invalid resource is provided" do
-        out = do_shell("help not_a_valid_resource")
-        out.stdout.must_include "The resource not_a_valid_resource does not exist."
+        do_shell("help not_a_valid_resource")
+        stdout.must_include "The resource not_a_valid_resource does not exist."
       end
 
       it "provides a list of resources" do
-        out = do_shell("help resources")
-        out.stdout.must_include " - command"
-        out.stdout.must_include " - file"
-        out.stdout.must_include " - sshd_config"
+        do_shell("help resources")
+        stdout.must_include " - command"
+        stdout.must_include " - file"
+        stdout.must_include " - sshd_config"
       end
 
       it "provides matchers help" do
-        out = do_shell("help matchers")
-        out.stdout.must_include "For more examples, see: https://www.inspec.io/docs/reference/matchers/"
+        do_shell("help matchers")
+        stdout.must_include "For more examples, see: https://www.inspec.io/docs/reference/matchers/"
       end
 
       it "provides empty example help" do
-        out = do_shell("help file")
-        out.stdout.must_include "Name"
-        out.stdout.must_include "Description"
-        out.stdout.must_include "Example"
-        out.stdout.must_include "Web Reference"
+        do_shell("help file")
+        stdout.must_include "Name"
+        stdout.must_include "Description"
+        stdout.must_include "Example"
+        stdout.must_include "Web Reference"
       end
 
       it "exposes all resources" do
-        out = do_shell("os")
-        out.stdout.must_match(/\=> .*Operating.* .*System.* .*Detection/)
+        do_shell("os")
+        stdout.must_match(/\=> .*Operating.* .*System.* .*Detection/)
       end
 
       it "can run ruby expressions" do
         x = rand
         y = rand
-        out = do_shell("#{x} + #{y}")
-        out.stdout.must_include "#{x + y}"
+        do_shell("#{x} + #{y}")
+        stdout.must_include "#{x + y}"
       end
 
       it "can run arbitrary ruby" do
-        out = do_shell("x = [1,2,3].inject(0) {|a,v| a + v*v}; x+10")
-        out.stdout.must_include "24"
+        do_shell("x = [1,2,3].inject(0) {|a,v| a + v*v}; x+10")
+        stdout.must_include "24"
       end
 
       it "runs anonymous tests that succeed" do
-        out = do_shell("describe file(\"#{__FILE__}\") do it { should exist } end")
-        out.stdout.must_include "1 successful"
-        out.stdout.must_include "0 failures"
+        do_shell("describe file(\"#{__FILE__}\") do it { should exist } end")
+        stdout.must_include "1 successful"
+        stdout.must_include "0 failures"
       end
 
       it "runs anonymous tests that fail" do
-        out = do_shell("describe file(\"foo/bar/baz\") do it { should exist } end")
-        out.stdout.must_include "0 successful"
-        out.stdout.must_include "1 failure"
+        do_shell("describe file(\"foo/bar/baz\") do it { should exist } end")
+        stdout.must_include "0 successful"
+        stdout.must_include "1 failure"
       end
 
       it "runs controls with tests" do
-        out = do_shell("control \"test\" do describe file(\"#{__FILE__}\") do it { should exist } end end")
-        out.stdout.must_include "1 successful"
-        out.stdout.must_include "0 failures"
+        do_shell("control \"test\" do describe file(\"#{__FILE__}\") do it { should exist } end end")
+        stdout.must_include "1 successful"
+        stdout.must_include "0 failures"
       end
 
       it "runs controls with multiple tests" do
-        out = do_shell("control \"test\" do describe file(\"#{__FILE__}\") do it { should exist } end; describe file(\"foo/bar/baz\") do it { should exist } end end")
-        out.stdout.must_include "0 successful"
-        out.stdout.must_include "1 failure"
+        do_shell("control \"test\" do describe file(\"#{__FILE__}\") do it { should exist } end; describe file(\"foo/bar/baz\") do it { should exist } end end")
+        stdout.must_include "0 successful"
+        stdout.must_include "1 failure"
       end
 
       it "reruns controls when redefined" do
-        out = do_shell("control \"test\" do describe file(\"#{__FILE__}\") do it { should exist } end end\ncontrol \"test\" do describe file(\"foo/bar/baz\") do it { should exist } end end")
-        out.stdout.must_include "1 successful"
-        out.stdout.must_include "1 failure"
+        do_shell("control \"test\" do describe file(\"#{__FILE__}\") do it { should exist } end end\ncontrol \"test\" do describe file(\"foo/bar/baz\") do it { should exist } end end")
+        stdout.must_include "1 successful"
+        stdout.must_include "1 failure"
       end
     end
   end
