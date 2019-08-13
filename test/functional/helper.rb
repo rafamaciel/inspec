@@ -139,7 +139,9 @@ module FunctionalHelper
 
   def inspec(commandline, prefix = nil)
     if is_windows?
-      invocation = "/windows/system32/cmd /C \"#{prefix} #{exec_inspec} #{commandline}\""
+      # pro-tip: `choco install echoargs` to debug this type of stuff.
+      commandline.gsub!(/"/, '\\"') # powershell is a nightmare
+      invocation = [prefix, exec_inspec, commandline].compact.join " "
       result = CMD.run_command(invocation)
       result.stdout.encode!(universal_newline: true)
       result.stderr.encode!(universal_newline: true)
