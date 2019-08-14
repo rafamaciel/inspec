@@ -141,6 +141,7 @@ module FunctionalHelper
     if is_windows?
       # pro-tip: `choco install echoargs` to debug this type of stuff.
       commandline.gsub!(/"/, '\\"') # powershell is a nightmare
+      prefix.gsub!(/&&/, ";") if prefix
       invocation = [prefix, exec_inspec, commandline].compact.join " "
       result = CMD.run_command(invocation)
       result.stdout.encode!(universal_newline: true)
