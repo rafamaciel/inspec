@@ -57,6 +57,12 @@ module Inspec
         RunnerRspec.new(@conf)
       end
 
+      if @conf[:waiver_file]
+        waivers = cleanse_waivers @conf.delete(:waiver_file)
+        @conf[:input_file] ||= []
+        @conf[:input_file].concat waivers
+      end
+
       # About reading inputs:
       #   @conf gets passed around a lot, eventually to
       # Inspec::InputRegistry.register_external_inputs.
@@ -69,6 +75,12 @@ module Inspec
       # of file paths, each a YAML file. This how --input-file works.
 
       configure_transport
+    end
+
+    def cleanse_waivers(waivers)
+      waivers.reject do |h|
+        # h[:expiry] && h[:reason] && h[:id] && etc ...
+      end
     end
 
     def tests
